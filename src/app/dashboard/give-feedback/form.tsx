@@ -88,13 +88,14 @@ export function GiveFeedbackForm() {
     try {
       // Add feedback to the reviewee's feedback subcollection
       const feedbackRef = collection(firestore, `users/${revieweeId}/feedback`);
-      await addDoc(feedbackRef, {
+      const newFeedback = {
         ...values,
         reviewerId: user.uid,
         revieweeId: revieweeId,
         timestamp: serverTimestamp(),
         visibility: 'private', // Default visibility
-      });
+      };
+      await addDoc(feedbackRef, newFeedback);
 
       // If this feedback is for a specific request, update the request status
       if (requestId) {

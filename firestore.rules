@@ -70,7 +70,8 @@ service cloud.firestore {
      * @deny A user cannot create a profile for another user.
      */
     match /users/{userId} {
-      allow get, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
@@ -84,7 +85,7 @@ service cloud.firestore {
        */
       match /interactions/{interactionId} {
         allow get, list: if isOwner(userId);
-        allow create: if isSignedIn() && (request.auth.uid == request.resource.data.participant1Id || request.auth.uid == request.resource.data.participant2Id);
+        allow create: if request.auth.uid == request.resource.data.participant1Id || request.auth.uid == request.resource.data.participant2Id;
         allow update: if isExistingOwner(userId);
         allow delete: if isExistingOwner(userId);
       }
