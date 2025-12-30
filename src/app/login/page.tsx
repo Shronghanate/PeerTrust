@@ -47,6 +47,7 @@ export default function LoginPage() {
       firstName: '',
       lastName: '',
       photoURL: '',
+      feedbackVisibility: 'private', // Default privacy setting
     });
   };
 

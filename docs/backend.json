@@ -41,6 +41,11 @@
           "items": {
             "type": "string"
           }
+        },
+        "feedbackVisibility": {
+          "type": "string",
+          "description": "Controls who can see feedback for this user.",
+          "enum": ["private", "managers", "all"]
         }
       },
       "required": [

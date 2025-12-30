@@ -17,6 +17,7 @@ export type UserProfile = {
     firstName: string;
     lastName: string;
     photoURL: string;
+    feedbackVisibility: 'private' | 'managers' | 'all';
 };
 
 export type FeedbackRequest = {
