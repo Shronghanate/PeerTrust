@@ -115,6 +115,23 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(request.resource.data.requesterId);
       allow delete: if false;
     }
+
+     /**
+     * @description Manages pending interaction confirmation requests.
+     * @path /pendingInteractions/{interactionId}
+     * @allow (list) Any signed in user can see the list of pending interactions to find requests for them.
+     * @allow (get) The requester or requestee can get the document.
+     * @allow (create) The requester can create the request.
+     * @allow (update) The requestee can update the status (approve/decline).
+     * @allow (delete) The requestee can delete the document (after approving).
+     */
+    match /pendingInteractions/{interactionId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && (isOwner(resource.data.requesterId) || isOwner(resource.data.requesteeId));
+      allow create: if isSignedIn() && isOwner(request.resource.data.requesterId);
+      allow update: if isSignedIn() && isOwner(resource.data.requesteeId);
+      allow delete: if isSignedIn() && isOwner(resource.data.requesteeId);
+    }
     
     /**
      * @description Manages temporary interaction codes. This collection is no longer used but the rule is kept for safety.

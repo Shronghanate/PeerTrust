@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp, setDoc, query, where } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, setDoc, query, where, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfile } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Send } from 'lucide-react';
 
 function PeerListItem({ peer, onSelect, isSelected }: { peer: UserProfile; onSelect: (id: string) => void; isSelected: boolean }) {
   return (
@@ -30,13 +31,13 @@ function PeerListItem({ peer, onSelect, isSelected }: { peer: UserProfile; onSel
   )
 }
 
-export default function ConfirmInteractionPage() {
+export default function LogInteractionPage() {
   const { firestore, user } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
 
   const [selectedPeerId, setSelectedPeerId] = useState<string | null>(null);
-  const [isConfirming, setIsConfirming] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -45,50 +46,38 @@ export default function ConfirmInteractionPage() {
 
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
 
-  const handleConfirm = async () => {
+  const handleRequest = async () => {
     if (!firestore || !user || !selectedPeerId) {
-      toast({ variant: "destructive", title: "Selection Required", description: "Please select a peer to confirm." });
+      toast({ variant: "destructive", title: "Selection Required", description: "Please select a peer to send a request." });
       return;
     }
 
-    setIsConfirming(true);
+    setIsRequesting(true);
     try {
-      // 1. Create interaction for current user
-      const userInteractionsCol = collection(firestore, `users/${user.uid}/interactions`);
-      const userInteractionRef = doc(userInteractionsCol);
-      await setDoc(userInteractionRef, {
-        id: userInteractionRef.id,
-        participant1Id: user.uid,
-        participant2Id: selectedPeerId,
-        timestamp: serverTimestamp(),
-      });
-
-      // 2. Create interaction for peer
-      const peerInteractionsCol = collection(firestore, `users/${selectedPeerId}/interactions`);
-      const peerInteractionRef = doc(peerInteractionsCol);
-      await setDoc(peerInteractionRef, {
-        id: peerInteractionRef.id,
-        participant1Id: selectedPeerId,
-        participant2Id: user.uid,
+      const pendingInteractionsCol = collection(firestore, 'pendingInteractions');
+      await addDoc(pendingInteractionsCol, {
+        requesterId: user.uid,
+        requesteeId: selectedPeerId,
+        status: 'pending',
         timestamp: serverTimestamp(),
       });
       
       toast({
-        title: "Interaction Confirmed!",
-        description: "You can now give feedback to your peer.",
+        title: "Interaction Request Sent!",
+        description: "Your peer has been notified and needs to approve the interaction.",
       });
 
-      router.push(`/dashboard/give-feedback?revieweeId=${selectedPeerId}`);
+      router.push(`/dashboard/requests`);
 
     } catch (error) {
-      console.error("Error confirming interaction:", error);
+      console.error("Error requesting interaction:", error);
       toast({
         variant: "destructive",
-        title: "Confirmation Failed",
-        description: "Could not confirm the interaction. Please try again.",
+        title: "Request Failed",
+        description: "Could not send the interaction request. Please try again.",
       });
     } finally {
-      setIsConfirming(false);
+      setIsRequesting(false);
     }
   };
 
@@ -96,9 +85,9 @@ export default function ConfirmInteractionPage() {
     <div className="mx-auto grid max-w-2xl gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Confirm an Interaction</CardTitle>
+          <CardTitle>Log an Interaction</CardTitle>
           <CardDescription>
-            Select the peer you just interacted with to create a verified record and provide feedback.
+            Select the peer you interacted with. They will be asked to confirm this interaction.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -125,8 +114,9 @@ export default function ConfirmInteractionPage() {
               )}
             </div>
           </ScrollArea>
-           <Button onClick={handleConfirm} disabled={isConfirming || !selectedPeerId} className="w-full">
-              {isConfirming ? 'Confirming...' : 'Confirm Interaction'}
+           <Button onClick={handleRequest} disabled={isRequesting || !selectedPeerId} className="w-full">
+              <Send className="mr-2 h-4 w-4" />
+              {isRequesting ? 'Sending Request...' : 'Send Interaction Request'}
             </Button>
         </CardContent>
       </Card>

@@ -1,4 +1,5 @@
 
+
 export type Feedback = {
     id: string;
     reviewerId: string;
@@ -21,9 +22,24 @@ export type UserProfile = {
 };
 
 export type FeedbackRequest = {
-    id: string;
+    id:string;
     requesterId: string;
     requesteeId: string;
     status: 'pending' | 'completed' | 'declined';
+    timestamp: any; // Firestore timestamp
+}
+
+export type Interaction = {
+    id: string;
+    participant1Id: string;
+    participant2Id: string;
+    timestamp: any; // Firestore timestamp
+};
+
+export type PendingInteraction = {
+    id: string;
+    requesterId: string;
+    requesteeId: string;
+    status: 'pending' | 'confirmed' | 'declined';
     timestamp: any; // Firestore timestamp
 }
