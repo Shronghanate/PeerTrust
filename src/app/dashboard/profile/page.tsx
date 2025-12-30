@@ -7,10 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useDoc, useFirebase, useMemoFirebase } from "@/firebase";
 import type { UserProfile } from "@/lib/types";
 import { doc } from "firebase/firestore";
-import { Edit, UserCheck2 } from "lucide-react";
+import { Edit, UserCheck2, MessageSquare } from "lucide-react";
+import { useState } from "react";
+import { EditProfileDialog } from "./edit-profile-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProfilePage() {
     const { user, firestore } = useFirebase();
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
     const userProfileRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -27,30 +31,40 @@ export default function ProfilePage() {
       </div>
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col items-center gap-6 text-center md:flex-row md:text-left">
-            
-                <Avatar className="h-24 w-24 border-4 border-background shadow-md">
-                <AvatarImage src={userProfile?.photoURL} alt={userProfile?.firstName || ''} />
-                <AvatarFallback>{userProfile?.firstName?.[0] || user?.email?.[0]}</AvatarFallback>
-                </Avatar>
-            
-            <div className="flex-1 space-y-1">
-              <div className="flex flex-col items-center gap-2 md:flex-row md:justify-start">
-                <h2 className="text-2xl font-bold">{userProfile?.firstName || 'Anonymous'} {userProfile?.lastName}</h2>
-                <Badge className="border-transparent bg-accent text-accent-foreground hover:bg-accent/80">
-                    <UserCheck2 className="mr-1 h-3 w-3" />
-                    Verified
-                </Badge>
+          {isLoading ? (
+            <div className="flex flex-col items-center gap-6 text-center md:flex-row md:text-left">
+              <Skeleton className="h-24 w-24 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-7 w-48" />
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-full max-w-lg" />
               </div>
-              <p className="font-medium text-primary">Role not set</p>
-              <p className="text-sm text-muted-foreground max-w-lg mx-auto md:mx-0">
-                Profile description not set.
-              </p>
             </div>
-            <Button variant="outline">
-              <Edit className="mr-2 h-4 w-4" /> Edit Profile
-            </Button>
-          </div>
+          ) : userProfile ? (
+            <div className="flex flex-col items-center gap-6 text-center md:flex-row md:text-left">
+              <Avatar className="h-24 w-24 border-4 border-background shadow-md">
+                <AvatarImage src={userProfile?.photoURL} alt={userProfile?.firstName || ''} />
+                <AvatarFallback>{userProfile?.firstName ? userProfile.firstName[0] : user?.email?.[0].toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 space-y-1">
+                <div className="flex flex-col items-center gap-2 md:flex-row md:justify-start">
+                  <h2 className="text-2xl font-bold">{userProfile?.firstName || 'Anonymous'} {userProfile?.lastName}</h2>
+                  <Badge className="border-transparent bg-accent text-accent-foreground hover:bg-accent/80">
+                      <UserCheck2 className="mr-1 h-3 w-3" />
+                      Verified
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground max-w-lg mx-auto md:mx-0">
+                  {userProfile?.email}
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
+                <Edit className="mr-2 h-4 w-4" /> Edit Profile
+              </Button>
+            </div>
+          ) : (
+             <p>No profile data found.</p>
+          )}
         </CardContent>
       </Card>
       
@@ -61,10 +75,19 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
             <div className="text-center text-muted-foreground py-12">
-                <p>No recent feedback to display.</p>
+                <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-200">No feedback yet</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Feedback you receive will appear here.</p>
             </div>
         </CardContent>
       </Card>
+       {userProfile && (
+        <EditProfileDialog 
+            isOpen={isEditDialogOpen}
+            setIsOpen={setIsEditDialogOpen}
+            userProfile={userProfile}
+        />
+       )}
     </div>
   );
 }

@@ -14,9 +14,9 @@ export type Feedback = {
 export type UserProfile = {
     id: string;
     email: string;
-    firstName?: string;
-    lastName?: string;
-    photoURL?: string;
+    firstName: string;
+    lastName: string;
+    photoURL: string;
 };
 
 export type FeedbackRequest = {

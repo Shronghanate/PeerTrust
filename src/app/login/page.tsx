@@ -14,9 +14,12 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
   AuthError,
+  User,
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { doc, setDoc } from "firebase/firestore";
+import { useFirebase } from "@/firebase/provider";
 
 export default function LoginPage() {
   const loginImage = PlaceHolderImages.find(p => p.id === 'login-background');
@@ -24,6 +27,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const auth = useAuth();
+  const { firestore } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
@@ -34,31 +38,46 @@ export default function LoginPage() {
     }
   }, [user, router]);
 
-  const handleSignIn = async (e: FormEvent) => {
+  const handleCreateUserProfile = async (user: User) => {
+    if (!firestore) return;
+    const userRef = doc(firestore, "users", user.uid);
+    await setDoc(userRef, {
+      id: user.uid,
+      email: user.email,
+      firstName: '',
+      lastName: '',
+      photoURL: '',
+    });
+  };
+
+  const handleAuth = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // First, try to sign in
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "Signed in successfully!" });
       router.push('/dashboard');
     } catch (error) {
       const authError = error as AuthError;
       if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
-        // If user not found, try to sign up
+        // If user not found or wrong password for sign-in, try to sign up
         try {
-          await createUserWithEmailAndPassword(auth, email, password);
+          const newUserCredential = await createUserWithEmailAndPassword(auth, email, password);
+          await handleCreateUserProfile(newUserCredential.user);
           toast({ title: "Account created and signed in!" });
           router.push('/dashboard');
         } catch (signUpError) {
           const signUpAuthError = signUpError as AuthError;
           toast({
             variant: "destructive",
-            title: "Uh oh! Something went wrong.",
-            description: signUpAuthError.message || "Could not create your account.",
+            title: "Authentication Failed",
+            description: signUpAuthError.message || "Could not create your account or sign you in.",
           });
         }
       } else {
+        // Handle other sign-in errors
         toast({
           variant: "destructive",
           title: "Uh oh! Something went wrong.",
@@ -85,7 +104,7 @@ export default function LoginPage() {
             </div>
             <Card>
                 <CardContent className="pt-6">
-                  <form onSubmit={handleSignIn} className="space-y-4">
+                  <form onSubmit={handleAuth} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
                         <Input 
@@ -111,7 +130,7 @@ export default function LoginPage() {
                         />
                     </div>
                     <Button className="w-full" type="submit" disabled={isLoading}>
-                      {isLoading ? 'Signing In...' : 'Sign In'}
+                      {isLoading ? 'Authenticating...' : 'Sign In or Sign Up'}
                     </Button>
                   </form>
                 </CardContent>
