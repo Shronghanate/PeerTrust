@@ -1,5 +1,11 @@
+'use client';
 import { redirect } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function Home() {
-  redirect('/login');
+  useEffect(() => {
+    redirect('/dashboard');
+  }, []);
+
+  return <div>Loading...</div>; // Or a proper loading component
 }
