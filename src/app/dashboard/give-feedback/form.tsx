@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +19,9 @@ import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from "next/navigation";
+import { useFirebase } from "@/firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 const formSchema = z.object({
   collaboration: z.string().min(1, { message: "Please select a rating." }),
@@ -57,6 +61,11 @@ function StarRating({ field }: { field: any }) {
 
 export function GiveFeedbackForm() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const { firestore, user } = useFirebase();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const revieweeId = searchParams.get('revieweeId');
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -68,13 +77,63 @@ export function GiveFeedbackForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: "Feedback Submitted!",
-      description: "Thank you for helping your peer grow.",
-    });
-    form.reset();
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!revieweeId || !firestore || !user) {
+        toast({
+            variant: "destructive",
+            title: "Submission Failed",
+            description: "Cannot submit feedback without a valid user and peer.",
+        });
+        return;
+    }
+    setIsSubmitting(true);
+
+    try {
+        const collaborationRating = parseInt(values.collaboration);
+        const communicationRating = parseInt(values.communication);
+        const executionRating = parseInt(values.execution);
+        const averageRating = (collaborationRating + communicationRating + executionRating) / 3;
+
+        const feedbackRef = collection(firestore, `users/${revieweeId}/feedback`);
+        await addDoc(feedbackRef, {
+            reviewerId: user.uid,
+            revieweeId: revieweeId,
+            rating: averageRating,
+            strengths: values.strengths,
+            areasForImprovement: values.improvements,
+            criteria: {
+                collaboration: collaborationRating,
+                communication: communicationRating,
+                execution: executionRating,
+            },
+            timestamp: serverTimestamp(),
+            visibility: 'private',
+        });
+        
+        toast({
+            title: "Feedback Submitted!",
+            description: "Thank you for helping your peer grow.",
+        });
+        form.reset();
+
+    } catch (error) {
+        console.error("Error submitting feedback:", error);
+        toast({
+            variant: "destructive",
+            title: "Submission Error",
+            description: "There was a problem submitting your feedback. Please try again.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
+  if (!revieweeId) {
+    return (
+        <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
+            <p>To give feedback, first confirm an interaction with a peer.</p>
+        </div>
+    )
   }
 
   return (
@@ -132,7 +191,9 @@ export function GiveFeedbackForm() {
             </FormItem>
           )}
         />
-        <Button type="submit">Submit Feedback</Button>
+        <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Submitting..." : "Submit Feedback"}
+        </Button>
       </form>
     </Form>
   );
