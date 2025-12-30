@@ -25,7 +25,7 @@ export default function LoginPage() {
                         <Label htmlFor="email">Email</Label>
                         <Input id="email" type="email" placeholder="m@example.com" required />
                     </div>
-                    <Link href="/dashboard" className="w-full" passHref>
+                    <Link href="/" className="w-full" passHref>
                       <Button className="w-full">Sign In with Email</Button>
                     </Link>
                 </CardContent>

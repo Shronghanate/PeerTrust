@@ -10,10 +10,10 @@ import {
 } from '@/components/ui/sidebar';
 
 const links = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/dashboard/confirm-interaction', label: 'Confirm Interaction', icon: QrCode },
-  { href: '/dashboard/give-feedback', label: 'Give Feedback', icon: Star },
-  { href: '/dashboard/requests', label: 'Requests', icon: GitPullRequest },
+  { href: '/', label: 'Dashboard', icon: Home },
+  { href: '/confirm-interaction', label: 'Confirm Interaction', icon: QrCode },
+  { href: '/give-feedback', label: 'Give Feedback', icon: Star },
+  { href: '/requests', label: 'Requests', icon: GitPullRequest },
 ];
 
 export function MainNav() {
@@ -24,7 +24,7 @@ export function MainNav() {
       {links.map((link) => {
         const Icon = link.icon;
         // The dashboard link is active only on the exact path. Other links are active if the path starts with their href.
-        const isActive = link.href === '/dashboard' ? pathname === link.href : pathname.startsWith(link.href);
+        const isActive = link.href === '/' ? pathname === link.href : pathname.startsWith(link.href);
         
         return (
           <SidebarMenuItem key={link.href}>
