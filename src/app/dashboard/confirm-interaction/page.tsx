@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, writeBatch, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -28,14 +28,15 @@ export default function ConfirmInteractionPage() {
     const generateCode = async () => {
       setIsLoading(true);
       try {
-        // Simple random code generation
         const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
         
         const codesRef = collection(firestore, 'interactionCodes');
-        await addDoc(codesRef, {
+        // Use setDoc with a specific ID to avoid multiple codes for the same user
+        const userCodeRef = doc(codesRef, user.uid);
+        await setDoc(userCodeRef, {
           code: newCode,
           userId: user.uid,
-          expiresAt: new Date(Date.now() + 5 * 60 * 1000), // Expires in 5 minutes
+          expiresAt: serverTimestamp(), 
         });
         
         setInteractionCode(newCode);
@@ -52,7 +53,6 @@ export default function ConfirmInteractionPage() {
     };
 
     generateCode();
-    // We can add a cleanup function to delete the code from firestore, but for now we'll let it expire
   }, [firestore, user, toast]);
 
   const handleConfirm = async () => {
@@ -82,40 +82,36 @@ export default function ConfirmInteractionPage() {
         return;
       }
 
-      // Create interaction for both users
-      const batch = writeBatch(firestore);
-      
-      // Interaction for current user
+      // --- Simplified and Corrected Interaction Creation ---
+
+      // 1. Create interaction for current user
       const userInteractionsCol = collection(firestore, `users/${user.uid}/interactions`);
-      const userInteractionRef = doc(userInteractionsCol); // generate a new unique ID
-      batch.set(userInteractionRef, {
+      const userInteractionRef = doc(userInteractionsCol);
+      await setDoc(userInteractionRef, {
         id: userInteractionRef.id,
         participant1Id: user.uid,
         participant2Id: peerCodeData.userId,
         timestamp: serverTimestamp(),
       });
 
-      // Interaction for peer
+      // 2. Create interaction for peer
       const peerInteractionsCol = collection(firestore, `users/${peerCodeData.userId}/interactions`);
-      const peerInteractionRef = doc(peerInteractionsCol); // generate a new unique ID
-      batch.set(peerInteractionRef, {
+      const peerInteractionRef = doc(peerInteractionsCol);
+      await setDoc(peerInteractionRef, {
         id: peerInteractionRef.id,
         participant1Id: peerCodeData.userId,
         participant2Id: user.uid,
         timestamp: serverTimestamp(),
       });
 
-      // Delete the used code
-      batch.delete(peerCodeDoc.ref);
-
-      await batch.commit();
+      // 3. Delete the used code
+      await deleteDoc(peerCodeDoc.ref);
 
       toast({
         title: "Interaction Confirmed!",
         description: "You can now give feedback to your peer.",
       });
 
-      // Redirect to give feedback page for the peer
       router.push(`/dashboard/give-feedback?revieweeId=${peerCodeData.userId}`);
 
     } catch (error) {
