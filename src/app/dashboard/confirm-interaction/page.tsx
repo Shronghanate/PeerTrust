@@ -84,22 +84,23 @@ export default function ConfirmInteractionPage() {
 
       // Create interaction for both users
       const batch = writeBatch(firestore);
-      const timestamp = new Date();
       
-      // Interaction for current user
-      const userInteractionsRef = doc(collection(firestore, `users/${user.uid}/interactions`));
-      batch.set(userInteractionsRef, {
+      // Interaction for current user - create a new doc ref
+      const userInteractionsCol = collection(firestore, `users/${user.uid}/interactions`);
+      const userInteractionRef = doc(userInteractionsCol);
+      batch.set(userInteractionRef, {
         participant1Id: user.uid,
         participant2Id: peerCodeData.userId,
-        timestamp: timestamp,
+        timestamp: serverTimestamp(),
       });
 
-      // Interaction for peer
-      const peerInteractionsRef = doc(collection(firestore, `users/${peerCodeData.userId}/interactions`));
-      batch.set(peerInteractionsRef, {
+      // Interaction for peer - create a new doc ref
+      const peerInteractionsCol = collection(firestore, `users/${peerCodeData.userId}/interactions`);
+      const peerInteractionRef = doc(peerInteractionsCol);
+      batch.set(peerInteractionRef, {
         participant1Id: peerCodeData.userId,
         participant2Id: user.uid,
-        timestamp: timestamp,
+        timestamp: serverTimestamp(),
       });
 
       // Delete the used code
