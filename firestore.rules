@@ -85,7 +85,7 @@ service cloud.firestore {
        */
       match /interactions/{interactionId} {
         allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && (request.resource.data.participant1Id == userId || request.resource.data.participant2Id == userId);
+        allow create: if isSignedIn() && (request.resource.data.participant1Id == request.auth.uid || request.resource.data.participant2Id == request.auth.uid);
         allow update: if isExistingOwner(userId) && request.resource.data.participant1Id == resource.data.participant1Id && request.resource.data.participant2Id == resource.data.participant2Id;
         allow delete: if isExistingOwner(userId);
       }

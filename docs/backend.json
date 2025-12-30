@@ -75,6 +75,10 @@
           "type": "string",
           "description": "Timestamp of the interaction.",
           "format": "date-time"
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Visibility settings for the interaction (e.g., public, private, shared)."
         }
       },
       "required": [
