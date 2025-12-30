@@ -1,0 +1,269 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's profile in the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "User's phone number."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "User's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "User's last name."
+        },
+        "role": {
+          "type": "string",
+          "description": "User's role (e.g., admin, user, moderator)."
+        },
+        "verificationBadge": {
+          "type": "string",
+          "description": "URL or identifier of the user's verification badge."
+        },
+        "blockedUserIds": {
+          "type": "array",
+          "description": "References to UserProfiles. (Relationship: UserProfile 1:N UserProfile (BlockedUsers))",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "firstName",
+        "lastName"
+      ]
+    },
+    "Interaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Interaction",
+      "type": "object",
+      "description": "Represents a verified peer interaction between two users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Interaction entity."
+        },
+        "code": {
+          "type": "string",
+          "description": "Interaction code/QR code value."
+        },
+        "participant1Id": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Interaction (Participant1))"
+        },
+        "participant2Id": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Interaction (Participant2))"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of the interaction.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "participant1Id",
+        "participant2Id",
+        "timestamp"
+      ]
+    },
+    "Feedback": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Feedback",
+      "type": "object",
+      "description": "Represents feedback given by one user to another.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Feedback entity."
+        },
+        "reviewerId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Feedback (Reviewer))"
+        },
+        "revieweeId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Feedback (Reviewee))"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Overall star rating given."
+        },
+        "strengths": {
+          "type": "string",
+          "description": "Description of the strenghts of the reviewee"
+        },
+        "areasForImprovement": {
+          "type": "string",
+          "description": "Description of the areas for improvement"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the feedback was given.",
+          "format": "date-time"
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Visibility settings for the feedback (e.g., public, private, shared)."
+        },
+        "reportReason": {
+          "type": "string",
+          "description": "Reason for reporting the feedback."
+        }
+      },
+      "required": [
+        "id",
+        "reviewerId",
+        "revieweeId",
+        "rating",
+        "timestamp"
+      ]
+    },
+    "FeedbackRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FeedbackRequest",
+      "type": "object",
+      "description": "Represents a request for feedback from one user to another.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the FeedbackRequest entity."
+        },
+        "requesterId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N FeedbackRequest (Requester))"
+        },
+        "requesteeId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N FeedbackRequest (Requestee))"
+        },
+        "message": {
+          "type": "string",
+          "description": "Optional message included in the feedback request."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the feedback request (e.g., pending, completed, declined)."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the feedback request was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "requesterId",
+        "requesteeId",
+        "status",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile information. Path-based ownership for user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/interactions/{interactionId}",
+        "definition": {
+          "entityName": "Interaction",
+          "schema": {
+            "$ref": "#/backend/entities/Interaction"
+          },
+          "description": "Stores interactions associated with a user. Path-based ownership for user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "interactionId",
+              "description": "The unique identifier for the interaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/feedback/{feedbackId}",
+        "definition": {
+          "entityName": "Feedback",
+          "schema": {
+            "$ref": "#/backend/entities/Feedback"
+          },
+          "description": "Stores feedback received by a user. Path-based ownership for user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "feedbackId",
+              "description": "The unique identifier for the feedback."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/feedbackRequests/{feedbackRequestId}",
+        "definition": {
+          "entityName": "FeedbackRequest",
+          "schema": {
+            "$ref": "#/backend/entities/FeedbackRequest"
+          },
+          "description": "Stores feedback requests created by a user. Path-based ownership for user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "feedbackRequestId",
+              "description": "The unique identifier for the feedback request."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability. User profiles are stored in `/users/{userId}`, enabling path-based ownership. Interactions, feedback, and feedback requests are stored as subcollections under the respective user (`/users/{userId}/interactions/{interactionId}`, `/users/{userId}/feedback/{feedbackId}`, and `/users/{userId}/feedbackRequests/{feedbackRequestId}`). This structure provides clear ownership and avoids hierarchical authorization dependencies, as rules can be written based on the document's path and data, without requiring `get()` calls to parent documents. All writes are validated against schemas. This structure supports required QAPs (queries and permissions) by allowing secure list operations within a user's own data. To improve query performance and guarantee scalability as the application grows, data is structured to avoid collection group queries. All collections that require role-based authorization are stored in a DBAC-compliant structure by assigning the proper role to each user. This will avoid the need for custom claims."
+  }
+}
