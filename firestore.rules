@@ -71,8 +71,7 @@ service cloud.firestore {
      * @principle Enforces self-creation and document ownership for writes, while allowing reads for discoverability.
      */
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if false;
+      allow get, list: if isSignedIn(); // allow listing users for feedback requests
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
@@ -106,22 +105,21 @@ service cloud.firestore {
         allow update: if isExistingOwner(userId) && request.resource.data.reviewerId == resource.data.reviewerId && request.resource.data.revieweeId == resource.data.revieweeId;
         allow delete: if isExistingOwner(userId);
       }
-
-      /**
-       * @description Manages feedback requests *sent* by a user. The {userId} in the path is the requester.
-       * @path /users/{userId}/feedbackRequests/{feedbackRequestId}
-       * @allow (get) The requester or the requestee can read a feedback request.
-       * @allow (create) A user can create a feedback request in their own subcollection. `auth.uid: 'requester_123'`, `path: /users/requester_123/feedbackRequests/xyz`
-       * @deny (delete) The requestee cannot delete a request sent to them.
-       * @principle Implements shared access between two parties (requester and requestee) for reads and updates.
-       */
-      match /feedbackRequests/{feedbackRequestId} {
-        allow get: if isExistingDoc() && (isOwner(resource.data.requesterId) || isOwner(resource.data.requesteeId));
-        allow list: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.requesterId == userId;
-        allow update: if isExistingDoc() && (isOwner(resource.data.requesterId) || isOwner(resource.data.requesteeId)) && request.resource.data.requesterId == resource.data.requesterId && request.resource.data.requesteeId == resource.data.requesteeId;
-        allow delete: if isExistingOwner(userId);
-      }
+    }
+    
+    /**
+     * @description Manages feedback requests.
+     * @path /feedbackRequests/{feedbackRequestId}
+     * @allow (read) The requester or the requestee can read a feedback request.
+     * @allow (create) A user can create a feedback request.
+     * @allow (update) The requester or requestee can update the status.
+     * @deny (delete) Deleting requests is disallowed to maintain history.
+     */
+    match /feedbackRequests/{feedbackRequestId} {
+      allow read, update: if isSignedIn() && (isOwner(resource.data.requesterId) || isOwner(resource.data.requesteeId));
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(request.resource.data.requesterId);
+      allow delete: if false;
     }
     
     /**

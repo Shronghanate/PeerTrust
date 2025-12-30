@@ -45,9 +45,7 @@
       },
       "required": [
         "id",
-        "email",
-        "firstName",
-        "lastName"
+        "email"
       ]
     },
     "Interaction": {
@@ -261,18 +259,14 @@
         }
       },
       {
-        "path": "/users/{userId}/feedbackRequests/{feedbackRequestId}",
+        "path": "/feedbackRequests/{feedbackRequestId}",
         "definition": {
           "entityName": "FeedbackRequest",
           "schema": {
             "$ref": "#/backend/entities/FeedbackRequest"
           },
-          "description": "Stores feedback requests created by a user. Path-based ownership for user data.",
+          "description": "Stores feedback requests created by a user.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
             {
               "name": "feedbackRequestId",
               "description": "The unique identifier for the feedback request."
@@ -295,6 +289,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability. User profiles are stored in `/users/{userId}`, enabling path-based ownership. Interactions, feedback, and feedback requests are stored as subcollections under the respective user (`/users/{userId}/interactions/{interactionId}`, `/users/{userId}/feedback/{feedbackId}`, and `/users/{userId}/feedbackRequests/{feedbackRequestId}`). This structure provides clear ownership and avoids hierarchical authorization dependencies, as rules can be written based on the document's path and data, without requiring `get()` calls to parent documents. All writes are validated against schemas. This structure supports required QAPs (queries and permissions) by allowing secure list operations within a user's own data. To improve query performance and guarantee scalability as the application grows, data is structured to avoid collection group queries. All collections that require role-based authorization are stored in a DBAC-compliant structure by assigning the proper role to each user. This will avoid the need for custom claims. A top-level `/interactionCodes` collection is added to store temporary, publicly readable codes for initiating interactions."
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability. User profiles are stored in `/users/{userId}`, enabling path-based ownership. Interactions and feedback are stored as subcollections under the respective user. Feedback requests are in a top-level collection for easier querying by both requester and requestee. This structure provides clear ownership and avoids hierarchical authorization dependencies, as rules can be written based on the document's path and data, without requiring `get()` calls to parent documents. All writes are validated against schemas. This structure supports required QAPs (queries and permissions) by allowing secure list operations. A top-level `/interactionCodes` collection is added to store temporary, publicly readable codes for initiating interactions."
   }
 }

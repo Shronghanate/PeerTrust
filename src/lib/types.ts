@@ -18,3 +18,11 @@ export type UserProfile = {
     lastName?: string;
     photoURL?: string;
 };
+
+export type FeedbackRequest = {
+    id: string;
+    requesterId: string;
+    requesteeId: string;
+    status: 'pending' | 'completed' | 'declined';
+    timestamp: any; // Firestore timestamp
+}

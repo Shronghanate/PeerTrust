@@ -19,9 +19,9 @@ import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useFirebase } from "@/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 
 const formSchema = z.object({
   collaboration: z.string().min(1, { message: "Please select a rating." }),
@@ -62,9 +62,11 @@ function StarRating({ field }: { field: any }) {
 export function GiveFeedbackForm() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { firestore, user } = useFirebase();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const revieweeId = searchParams.get('revieweeId');
+  const requestId = searchParams.get('requestId');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -110,11 +112,19 @@ export function GiveFeedbackForm() {
             visibility: 'private',
         });
         
+        if (requestId) {
+            const requestRef = doc(firestore, 'feedbackRequests', requestId);
+            await updateDoc(requestRef, {
+                status: 'completed',
+            });
+        }
+
         toast({
             title: "Feedback Submitted!",
             description: "Thank you for helping your peer grow.",
         });
         form.reset();
+        router.push('/dashboard/requests');
 
     } catch (error) {
         console.error("Error submitting feedback:", error);
@@ -131,7 +141,7 @@ export function GiveFeedbackForm() {
   if (!revieweeId) {
     return (
         <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-            <p>To give feedback, first confirm an interaction with a peer.</p>
+            <p>To give feedback, first confirm an interaction with a peer or accept a feedback request.</p>
         </div>
     )
   }
