@@ -288,7 +288,7 @@
         "definition": {
           "entityName": "InteractionCode",
           "schema": { "$ref": "#/backend/entities/InteractionCode" },
-          "description": "Stores temporary codes for verifying interactions.",
+          "description": "Stores temporary codes for verifying interactions. This collection is no longer used.",
           "params": [
             {
               "name": "codeId",
@@ -298,6 +298,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability. User profiles are stored in `/users/{userId}`, enabling path-based ownership. Interactions and feedback are stored as subcollections under the respective user. Feedback requests are in a top-level collection for easier querying by both requester and requestee. This structure provides clear ownership and avoids hierarchical authorization dependencies, as rules can be written based on the document's path and data, without requiring `get()` calls to parent documents. All writes are validated against schemas. This structure supports required QAPs (queries and permissions) by allowing secure list operations. A top-level `/interactionCodes` collection is added to store temporary, publicly readable codes for initiating interactions."
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability. User profiles are stored in `/users/{userId}`, enabling path-based ownership. Interactions and feedback are stored as subcollections under the respective user. Feedback requests are in a top-level collection for easier querying by both requester and requestee. This structure provides clear ownership and avoids hierarchical authorization dependencies, as rules can be written based on the document's path and data, without requiring `get()` calls to parent documents. All writes are validated against schemas. This structure supports required QAPs (queries and permissions) by allowing secure list operations. The top-level `/interactionCodes` collection is no longer used by the new user-selection confirmation flow but is kept for historical reference."
   }
 }

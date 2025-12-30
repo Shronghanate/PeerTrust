@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, QrCode, Star, GitPullRequest } from 'lucide-react';
+import { Home, Handshake, Star, GitPullRequest } from 'lucide-react';
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -11,7 +11,7 @@ import {
 
 const links = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/dashboard/confirm-interaction', label: 'Confirm Interaction', icon: QrCode },
+  { href: '/dashboard/confirm-interaction', label: 'Confirm Interaction', icon: Handshake },
   { href: '/dashboard/give-feedback', label: 'Give Feedback', icon: Star },
   { href: '/dashboard/requests', label: 'Requests', icon: GitPullRequest },
 ];

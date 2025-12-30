@@ -81,12 +81,12 @@ service cloud.firestore {
        * @path /users/{userId}/interactions/{interactionId}
        * @allow (read) A user can only read their own interaction history.
        * @allow (create) A user can create an interaction document in their own or a peer's history,
-       *                but only if they are one of the participants.
+       *                but only if they are one of the participants. This allows for cross-user writes.
        */
       match /interactions/{interactionId} {
         allow get, list: if isOwner(userId);
-        allow create: if isSignedIn() && (request.auth.uid == request.resource.data.participant1Id || request.auth.uid == request.resource.data.participant2Id);
-        allow update, delete: if isOwner(userId);
+        allow create: if request.auth.uid == request.resource.data.participant1Id || request.auth.uid == request.resource.data.participant2Id;
+        allow update, delete: if false; // Interactions should be immutable
       }
 
       /**
@@ -117,16 +117,14 @@ service cloud.firestore {
     }
     
     /**
-     * @description Manages temporary interaction codes.
+     * @description Manages temporary interaction codes. This collection is no longer used but the rule is kept for safety.
      * @path /interactionCodes/{codeId}
      * @allow (read) Any authenticated user can read a code to confirm an interaction.
      * @allow (create) A user can create a code for themselves.
      * @allow (delete) A user can delete their own code.
      */
     match /interactionCodes/{codeId} {
-      allow read: if isSignedIn();
-      allow create, delete: if isSignedIn() && isOwner(request.resource.data.userId);
-      allow update: if false;
+      allow read, create, delete, update: if false;
     }
   }
 }

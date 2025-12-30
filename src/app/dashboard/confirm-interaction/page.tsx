@@ -1,177 +1,133 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import QRCode from 'react-qr-code';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, writeBatch, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { collection, doc, serverTimestamp, setDoc, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { UserProfile } from '@/lib/types';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+
+function PeerListItem({ peer, onSelect, isSelected }: { peer: UserProfile; onSelect: (id: string) => void; isSelected: boolean }) {
+  return (
+    <div 
+      className={`flex items-center gap-4 rounded-lg border p-4 cursor-pointer transition-colors ${isSelected ? 'bg-accent border-primary' : 'hover:bg-muted/50'}`}
+      onClick={() => onSelect(peer.id)}
+    >
+      <Avatar>
+        <AvatarImage src={peer.photoURL} alt={peer.firstName} />
+        <AvatarFallback>{peer.firstName ? peer.firstName.charAt(0) : 'U'}</AvatarFallback>
+      </Avatar>
+      <div>
+        <p className="font-semibold">{peer.firstName} {peer.lastName}</p>
+        <p className="text-sm text-muted-foreground">{peer.email}</p>
+      </div>
+    </div>
+  )
+}
 
 export default function ConfirmInteractionPage() {
   const { firestore, user } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
 
-  const [interactionCode, setInteractionCode] = useState<string | null>(null);
-  const [peerCode, setPeerCode] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedPeerId, setSelectedPeerId] = useState<string | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
 
-  // Generate a new interaction code for the current user
-  useEffect(() => {
-    if (!firestore || !user) return;
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, "users"), where("id", "!=", user.uid));
+  }, [firestore, user]);
 
-    const generateCode = async () => {
-      setIsLoading(true);
-      try {
-        const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        
-        const codesRef = collection(firestore, 'interactionCodes');
-        // Use setDoc with a specific ID to avoid multiple codes for the same user
-        const userCodeRef = doc(codesRef, user.uid);
-        await setDoc(userCodeRef, {
-          code: newCode,
-          userId: user.uid,
-          expiresAt: serverTimestamp(), 
-        });
-        
-        setInteractionCode(newCode);
-      } catch (error) {
-        console.error("Error generating interaction code:", error);
-        toast({
-          variant: "destructive",
-          title: "Could not generate code",
-          description: "There was an issue generating a new interaction code. Please try again.",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    generateCode();
-  }, [firestore, user, toast]);
+  const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
 
   const handleConfirm = async () => {
-    if (!firestore || !user || !peerCode) {
-      toast({ variant: "destructive", title: "Invalid code", description: "Please enter a valid code." });
+    if (!firestore || !user || !selectedPeerId) {
+      toast({ variant: "destructive", title: "Selection Required", description: "Please select a peer to confirm." });
       return;
     }
 
     setIsConfirming(true);
     try {
-      const codesRef = collection(firestore, 'interactionCodes');
-      const q = query(codesRef, where("code", "==", peerCode.toUpperCase()));
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        toast({ variant: "destructive", title: "Invalid Code", description: "The code you entered is invalid or has expired." });
-        setIsConfirming(false);
-        return;
-      }
-
-      const peerCodeDoc = querySnapshot.docs[0];
-      const peerCodeData = peerCodeDoc.data();
-      
-      if (peerCodeData.userId === user.uid) {
-        toast({ variant: "destructive", title: "Cannot use your own code", description: "Please enter the code from your peer." });
-        setIsConfirming(false);
-        return;
-      }
-
-      // --- Simplified and Corrected Interaction Creation ---
-
       // 1. Create interaction for current user
       const userInteractionsCol = collection(firestore, `users/${user.uid}/interactions`);
       const userInteractionRef = doc(userInteractionsCol);
       await setDoc(userInteractionRef, {
         id: userInteractionRef.id,
         participant1Id: user.uid,
-        participant2Id: peerCodeData.userId,
+        participant2Id: selectedPeerId,
         timestamp: serverTimestamp(),
       });
 
       // 2. Create interaction for peer
-      const peerInteractionsCol = collection(firestore, `users/${peerCodeData.userId}/interactions`);
+      const peerInteractionsCol = collection(firestore, `users/${selectedPeerId}/interactions`);
       const peerInteractionRef = doc(peerInteractionsCol);
       await setDoc(peerInteractionRef, {
         id: peerInteractionRef.id,
-        participant1Id: peerCodeData.userId,
+        participant1Id: selectedPeerId,
         participant2Id: user.uid,
         timestamp: serverTimestamp(),
       });
-
-      // 3. Delete the used code
-      await deleteDoc(peerCodeDoc.ref);
-
+      
       toast({
         title: "Interaction Confirmed!",
         description: "You can now give feedback to your peer.",
       });
 
-      router.push(`/dashboard/give-feedback?revieweeId=${peerCodeData.userId}`);
+      router.push(`/dashboard/give-feedback?revieweeId=${selectedPeerId}`);
 
     } catch (error) {
       console.error("Error confirming interaction:", error);
       toast({
         variant: "destructive",
         title: "Confirmation Failed",
-        description: "Could not confirm the interaction. Please check the code and try again.",
+        description: "Could not confirm the interaction. Please try again.",
       });
+    } finally {
       setIsConfirming(false);
     }
   };
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-6">
+    <div className="mx-auto grid max-w-2xl gap-6">
       <Card>
         <CardHeader>
           <CardTitle>Confirm an Interaction</CardTitle>
           <CardDescription>
-            Generate or enter a code to verify a peer interaction. This ensures feedback is based on real-world engagements.
+            Select the peer you just interacted with to create a verified record and provide feedback.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-6 md:grid-cols-2">
-          <div className="flex flex-col items-center justify-center space-y-4 rounded-lg border-2 border-dashed p-8">
-            <h3 className="text-lg font-semibold">Your Interaction Code</h3>
-            <p className="text-sm text-muted-foreground">Share this code with your peer.</p>
-            <div className="flex h-10 items-center space-x-2 rounded-md bg-muted px-4 py-2">
-              {isLoading || !interactionCode ? (
-                <Skeleton className="h-6 w-28" />
+        <CardContent className="space-y-4">
+          <h3 className="text-lg font-semibold">Select a Peer</h3>
+          <ScrollArea className="h-72 w-full rounded-md border">
+            <div className="p-4 space-y-4">
+              {isLoadingUsers ? (
+                <>
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </>
+              ) : users && users.length > 0 ? (
+                 users.map(peer => (
+                   <PeerListItem 
+                      key={peer.id}
+                      peer={peer}
+                      onSelect={setSelectedPeerId}
+                      isSelected={selectedPeerId === peer.id}
+                   />
+                 ))
               ) : (
-                <span className="text-2xl font-bold tracking-widest text-primary">{interactionCode}</span>
+                <p className="text-center text-muted-foreground pt-4">No other users found.</p>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">Or let them scan your QR code.</p>
-            <div className="rounded-lg bg-white p-2 shadow-md h-28 w-28 flex items-center justify-center">
-              {isLoading || !interactionCode ? (
-                <Skeleton className="h-full w-full" />
-              ) : (
-                <QRCode value={interactionCode} size={96} />
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col space-y-4 pt-8">
-            <h3 className="text-lg font-semibold">Enter a Peer's Code</h3>
-            <p className="text-sm text-muted-foreground">
-              Input the code provided by your peer to confirm your interaction and leave feedback.
-            </p>
-            <div className="flex w-full items-center space-x-2">
-              <Input
-                placeholder="XXX-XXX"
-                className="text-center text-lg tracking-widest"
-                value={peerCode}
-                onChange={(e) => setPeerCode(e.target.value)}
-                disabled={isConfirming}
-              />
-              <Button onClick={handleConfirm} disabled={isConfirming || !peerCode}>
-                {isConfirming ? 'Confirming...' : 'Confirm'}
-              </Button>
-            </div>
-          </div>
+          </ScrollArea>
+           <Button onClick={handleConfirm} disabled={isConfirming || !selectedPeerId} className="w-full">
+              {isConfirming ? 'Confirming...' : 'Confirm Interaction'}
+            </Button>
         </CardContent>
       </Card>
     </div>
