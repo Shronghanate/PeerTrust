@@ -1,7 +1,8 @@
-
 export const firebaseConfig = {
-  // This object is intentionally left empty.
-  // Firebase App Hosting provides the configuration automatically
-  // when initializeApp() is called without arguments in its environment.
-  // For local development, you would populate this with your Firebase project's web app config.
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
