@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -32,7 +32,7 @@ export default function ConfirmInteractionPage() {
         const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
         
         const codesRef = collection(firestore, 'interactionCodes');
-        const docRef = await addDoc(codesRef, {
+        await addDoc(codesRef, {
           code: newCode,
           userId: user.uid,
           expiresAt: new Date(Date.now() + 5 * 60 * 1000), // Expires in 5 minutes
@@ -87,16 +87,16 @@ export default function ConfirmInteractionPage() {
       const timestamp = new Date();
       
       // Interaction for current user
-      const userInteractionsRef = collection(firestore, `users/${user.uid}/interactions`);
-      const userInteractionDoc = await addDoc(userInteractionsRef, {
+      const userInteractionsRef = doc(collection(firestore, `users/${user.uid}/interactions`));
+      batch.set(userInteractionsRef, {
         participant1Id: user.uid,
         participant2Id: peerCodeData.userId,
         timestamp: timestamp,
       });
 
       // Interaction for peer
-      const peerInteractionsRef = collection(firestore, `users/${peerCodeData.userId}/interactions`);
-       await addDoc(peerInteractionsRef, {
+      const peerInteractionsRef = doc(collection(firestore, `users/${peerCodeData.userId}/interactions`));
+      batch.set(peerInteractionsRef, {
         participant1Id: peerCodeData.userId,
         participant2Id: user.uid,
         timestamp: timestamp,
