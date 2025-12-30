@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -241,7 +242,11 @@ export default function RequestsPage() {
   
   const allSentRequests = useMemo(() => {
     const combined = [...(sentFeedback || []), ...(sentInteractions || [])];
-    return combined.sort((a, b) => b.timestamp?.toDate() - a.timestamp?.toDate());
+    return combined.sort((a, b) => {
+      const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : 0;
+      const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : 0;
+      return dateB - dateA;
+    });
   }, [sentFeedback, sentInteractions]);
   
   const isLoadingIncoming = isLoadingIncomingFeedback || isLoadingIncomingInteractions;
