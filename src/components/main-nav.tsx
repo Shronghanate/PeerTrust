@@ -12,7 +12,6 @@ import {
 const links = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/dashboard/log-interaction', label: 'Log Interaction', icon: Handshake },
-  { href: '/dashboard/give-feedback', label: 'Give Feedback', icon: Star },
   { href: '/dashboard/requests', label: 'Requests', icon: GitPullRequest },
 ];
 
