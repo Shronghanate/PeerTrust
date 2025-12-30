@@ -243,8 +243,8 @@ export default function RequestsPage() {
   const allSentRequests = useMemo(() => {
     const combined = [...(sentFeedback || []), ...(sentInteractions || [])];
     return combined.sort((a, b) => {
-      const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : 0;
-      const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : 0;
+      const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
+      const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
       return dateB - dateA;
     });
   }, [sentFeedback, sentInteractions]);

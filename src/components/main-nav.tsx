@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Handshake, Star, GitPullRequest } from 'lucide-react';
+import { Home, Handshake, GitPullRequest } from 'lucide-react';
 import {
   SidebarMenu,
   SidebarMenuItem,
