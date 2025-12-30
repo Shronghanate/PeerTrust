@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from "react";
@@ -8,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
 import { collection, query, where, updateDoc, writeBatch, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import type { FeedbackRequest, UserProfile, PendingInteraction, Interaction } from "@/lib/types";
-import { Check, X, Clock, Send, Handshake } from "lucide-react";
+import { Check, X, Clock, Send, Handshake, Star } from "lucide-react";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import Link from "next/link";
 import {
@@ -78,7 +79,7 @@ function FeedbackRequestListItem({ request }: { request: FeedbackRequest }) {
 function SentRequestListItem({ request }: { request: FeedbackRequest | PendingInteraction }) {
     const { firestore } = useFirebase();
     const otherUserId = request.requesteeId;
-    const isFeedback = 'requesterId' in request && !('status' in request && 'requesterId' in request && 'requesteeId' in request);
+    const isFeedback = 'message' in request;
 
     const userProfileRef = useMemoFirebase(() => {
         if (!firestore || !otherUserId) return null;
@@ -243,9 +244,10 @@ export default function RequestsPage() {
   const allSentRequests = useMemo(() => {
     const combined = [...(sentFeedback || []), ...(sentInteractions || [])];
     return combined.sort((a, b) => {
-      const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
-      const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
-      return dateB - dateA;
+      // Handle cases where timestamp might not be set yet (e.g. serverTimestamp)
+      const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : Date.now();
+      const timeB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : Date.now();
+      return timeB - timeA;
     });
   }, [sentFeedback, sentInteractions]);
   
