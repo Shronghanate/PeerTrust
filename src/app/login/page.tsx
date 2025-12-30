@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.push('/');
+      router.push('/dashboard');
     }
   }, [user, router]);
 
@@ -41,7 +41,7 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "Signed in successfully!" });
-      router.push('/');
+      router.push('/dashboard');
     } catch (error) {
       const authError = error as AuthError;
       if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
@@ -49,7 +49,7 @@ export default function LoginPage() {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
           toast({ title: "Account created and signed in!" });
-          router.push('/');
+          router.push('/dashboard');
         } catch (signUpError) {
           const signUpAuthError = signUpError as AuthError;
           toast({

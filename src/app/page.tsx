@@ -7,5 +7,5 @@ export default function Home() {
     redirect('/dashboard');
   }, []);
 
-  return <div>Loading...</div>; // Or a proper loading component
+  return <div>Loading...</div>;
 }
