@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, updateDoc } from "firebase/firestore";
 import type { FeedbackRequest, UserProfile } from "@/lib/types";
 import { Check, X, Clock, Send } from "lucide-react";
 import { useDoc } from "@/firebase/firestore/use-doc";
@@ -20,10 +20,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { RequestFeedbackForm } from "./request-feedback-form";
+import { useToast } from "@/hooks/use-toast";
 
 
 function RequestListItem({ request, type }: { request: FeedbackRequest, type: 'incoming' | 'sent' }) {
   const { firestore, user } = useFirebase();
+  const { toast } = useToast();
   const otherUserId = type === 'incoming' ? request.requesterId : request.requesteeId;
 
   const userProfileRef = useMemoFirebase(() => {
@@ -32,6 +34,18 @@ function RequestListItem({ request, type }: { request: FeedbackRequest, type: 'i
   }, [firestore, otherUserId]);
 
   const { data: profile } = useDoc<UserProfile>(userProfileRef);
+
+  const handleDecline = async () => {
+    if (!firestore || !request.id) return;
+    try {
+      const requestRef = doc(firestore, 'feedbackRequests', request.id);
+      await updateDoc(requestRef, { status: 'declined' });
+      toast({ title: "Request declined." });
+    } catch (error) {
+      console.error("Error declining request:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not decline the request." });
+    }
+  };
 
   return (
     <div className="flex flex-col items-start gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -43,13 +57,13 @@ function RequestListItem({ request, type }: { request: FeedbackRequest, type: 'i
         <div>
           <p className="font-semibold">{profile ? `${profile.firstName} ${profile.lastName}` : 'Loading...'}</p>
           <p className="text-sm text-muted-foreground">
-            {new Date(request.timestamp?.toDate()).toLocaleDateString()}
+            {request.timestamp && new Date(request.timestamp?.toDate()).toLocaleDateString()}
           </p>
         </div>
       </div>
       {type === 'incoming' && request.status === 'pending' && (
         <div className="flex w-full gap-2 sm:w-auto">
-          <Button variant="outline" size="sm" className="flex-1">
+          <Button variant="outline" size="sm" className="flex-1" onClick={handleDecline}>
             <X className="mr-1 h-4 w-4" /> Decline
           </Button>
           <Link href={`/dashboard/give-feedback?revieweeId=${request.requesterId}&requestId=${request.id}`} passHref>
@@ -66,10 +80,15 @@ function RequestListItem({ request, type }: { request: FeedbackRequest, type: 'i
                 <Clock className="h-4 w-4" />
                 <span>Pending</span>
             </div>
-          ) : (
+          ) : request.status === 'completed' ? (
             <div className="flex items-center gap-2 text-sm text-accent">
                 <Check className="h-4 w-4" />
                 <span>Completed</span>
+            </div>
+          ) : (
+             <div className="flex items-center gap-2 text-sm text-destructive">
+                <X className="h-4 w-4" />
+                <span>Declined</span>
             </div>
           )}
         </>

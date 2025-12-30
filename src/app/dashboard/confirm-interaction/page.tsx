@@ -28,14 +28,14 @@ export default function ConfirmInteractionPage() {
     const generateCode = async () => {
       setIsLoading(true);
       try {
+        // Simple random code generation
         const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // Expires in 5 minutes
-
+        
         const codesRef = collection(firestore, 'interactionCodes');
-        await addDoc(codesRef, {
+        const docRef = await addDoc(codesRef, {
           code: newCode,
           userId: user.uid,
-          expiresAt: serverTimestamp(),
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000), // Expires in 5 minutes
         });
         
         setInteractionCode(newCode);
@@ -84,19 +84,19 @@ export default function ConfirmInteractionPage() {
 
       // Create interaction for both users
       const batch = writeBatch(firestore);
-      const timestamp = serverTimestamp();
+      const timestamp = new Date();
       
       // Interaction for current user
-      const userInteractionRef = collection(firestore, `users/${user.uid}/interactions`);
-      batch.set(userInteractionRef, {
+      const userInteractionsRef = collection(firestore, `users/${user.uid}/interactions`);
+      const userInteractionDoc = await addDoc(userInteractionsRef, {
         participant1Id: user.uid,
         participant2Id: peerCodeData.userId,
         timestamp: timestamp,
       });
 
       // Interaction for peer
-      const peerInteractionRef = collection(firestore, `users/${peerCodeData.userId}/interactions`);
-      batch.set(peerInteractionRef, {
+      const peerInteractionsRef = collection(firestore, `users/${peerCodeData.userId}/interactions`);
+       await addDoc(peerInteractionsRef, {
         participant1Id: peerCodeData.userId,
         participant2Id: user.uid,
         timestamp: timestamp,

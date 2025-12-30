@@ -23,7 +23,10 @@ export function MainNav() {
     <SidebarMenu>
       {links.map((link) => {
         const Icon = link.icon;
-        const isActive = pathname === link.href;
+        // Check if the current pathname starts with the link's href.
+        // This makes the 'Dashboard' link active for all sub-pages as well.
+        // A special case for exact match on the main dashboard page.
+        const isActive = link.href === '/dashboard' ? pathname === link.href : pathname.startsWith(link.href);
         
         return (
           <SidebarMenuItem key={link.href}>
