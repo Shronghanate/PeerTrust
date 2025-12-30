@@ -60,10 +60,6 @@
           "type": "string",
           "description": "Unique identifier for the Interaction entity."
         },
-        "code": {
-          "type": "string",
-          "description": "Interaction code/QR code value."
-        },
         "participant1Id": {
           "type": "string",
           "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Interaction (Participant1))"
@@ -80,7 +76,6 @@
       },
       "required": [
         "id",
-        "code",
         "participant1Id",
         "participant2Id",
         "timestamp"
@@ -177,6 +172,28 @@
         "status",
         "timestamp"
       ]
+    },
+    "InteractionCode": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InteractionCode",
+      "description": "A temporary code used to verify a peer-to-peer interaction.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "The generated interaction code."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who generated the code."
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the code expires."
+        }
+      },
+      "required": ["code", "userId", "expiresAt"]
     }
   },
   "auth": {
@@ -262,8 +279,22 @@
             }
           ]
         }
+      },
+       {
+        "path": "/interactionCodes/{codeId}",
+        "definition": {
+          "entityName": "InteractionCode",
+          "schema": { "$ref": "#/backend/entities/InteractionCode" },
+          "description": "Stores temporary codes for verifying interactions.",
+          "params": [
+            {
+              "name": "codeId",
+              "description": "The unique identifier for the interaction code document."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability. User profiles are stored in `/users/{userId}`, enabling path-based ownership. Interactions, feedback, and feedback requests are stored as subcollections under the respective user (`/users/{userId}/interactions/{interactionId}`, `/users/{userId}/feedback/{feedbackId}`, and `/users/{userId}/feedbackRequests/{feedbackRequestId}`). This structure provides clear ownership and avoids hierarchical authorization dependencies, as rules can be written based on the document's path and data, without requiring `get()` calls to parent documents. All writes are validated against schemas. This structure supports required QAPs (queries and permissions) by allowing secure list operations within a user's own data. To improve query performance and guarantee scalability as the application grows, data is structured to avoid collection group queries. All collections that require role-based authorization are stored in a DBAC-compliant structure by assigning the proper role to each user. This will avoid the need for custom claims."
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability. User profiles are stored in `/users/{userId}`, enabling path-based ownership. Interactions, feedback, and feedback requests are stored as subcollections under the respective user (`/users/{userId}/interactions/{interactionId}`, `/users/{userId}/feedback/{feedbackId}`, and `/users/{userId}/feedbackRequests/{feedbackRequestId}`). This structure provides clear ownership and avoids hierarchical authorization dependencies, as rules can be written based on the document's path and data, without requiring `get()` calls to parent documents. All writes are validated against schemas. This structure supports required QAPs (queries and permissions) by allowing secure list operations within a user's own data. To improve query performance and guarantee scalability as the application grows, data is structured to avoid collection group queries. All collections that require role-based authorization are stored in a DBAC-compliant structure by assigning the proper role to each user. This will avoid the need for custom claims. A top-level `/interactionCodes` collection is added to store temporary, publicly readable codes for initiating interactions."
   }
 }

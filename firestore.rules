@@ -123,5 +123,20 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
     }
+    
+    /**
+     * @description Manages temporary interaction codes.
+     * @path /interactionCodes/{codeId}
+     * @allow (create) Any authenticated user can create a code for themselves.
+     * @allow (read) Any authenticated user can read a code to confirm an interaction.
+     * @deny (update) Codes cannot be updated.
+     * @allow (delete) A user can delete their own code (or it can be deleted by the system).
+     */
+    match /interactionCodes/{codeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+      allow update: if false;
+    }
   }
 }

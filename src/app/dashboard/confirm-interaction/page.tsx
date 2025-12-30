@@ -1,41 +1,130 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import QRCode from 'react-qr-code';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
-const QrCodePlaceholder = () => (
-  <svg width="96" height="96" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
-      <path fillRule="evenodd" clipRule="evenodd" d="M12 4H4V12H12V4ZM10 6H6V10H10V6Z" fill="currentColor"/>
-      <path fillRule="evenodd" clipRule="evenodd" d="M12 20H4V28H12V20ZM10 22H6V26H10V22Z" fill="currentColor"/>
-      <path fillRule="evenodd" clipRule="evenodd" d="M28 4H20V12H28V4ZM26 6H22V10H26V6Z" fill="currentColor"/>
-      <path d="M18 4H14V6H18V4Z" fill="currentColor"/>
-      <path d="M18 10H14V12H18V10Z" fill="currentColor"/>
-      <path d="M18 14H16V16H18V14Z" fill="currentColor"/>
-      <path d="M14 16H12V18H14V16Z" fill="currentColor"/>
-      <path d="M6 14H4V16H6V14Z" fill="currentColor"/>
-      <path d="M20 14H18V16H20V14Z" fill="currentColor"/>
-      <path d="M22 14H20V16H22V14Z" fill="currentColor"/>
-      <path d="M24 14H22V16H24V14Z" fill="currentColor"/>
-      <path d="M26 14H24V16H26V14Z" fill="currentColor"/>
-      <path d="M28 14H26V16H28V14Z" fill="currentColor"/>
-      <path d="M6 18H4V20H6V18Z" fill="currentColor"/>
-      <path d="M14 20H12V22H14V20Z" fill="currentColor"/>
-      <path d="M14 26H12V28H14V26Z" fill="currentColor"/>
-      <path d="M18 28H14V30H18V28Z" fill="currentColor"/>
-      <path d="M20 28H18V30H20V28Z" fill="currentColor"/>
-      <path d="M22 18H20V20H22V18Z" fill="currentColor"/>
-      <path d="M20 22H18V24H20V22Z" fill="currentColor"/>
-      <path d="M22 24H20V26H22V24Z" fill="currentColor"/>
-      <path d="M24 26H22V28H24V26Z" fill="currentColor"/>
-      <path d="M26 22H24V24H26V22Z" fill="currentColor"/>
-      <path d="M28 20H26V22H28V20Z" fill="currentColor"/>
-      <path d="M28 24H26V26H28V24Z" fill="currentColor"/>
-      <path d="M28 28H26V30H28V28Z" fill="currentColor"/>
-  </svg>
-);
-
+import { useFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ConfirmInteractionPage() {
-  const interactionCode = "A4T-87P-LMN";
+  const { firestore, user } = useFirebase();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const [interactionCode, setInteractionCode] = useState<string | null>(null);
+  const [peerCode, setPeerCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  // Generate a new interaction code for the current user
+  useEffect(() => {
+    if (!firestore || !user) return;
+
+    const generateCode = async () => {
+      setIsLoading(true);
+      try {
+        const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // Expires in 5 minutes
+
+        const codesRef = collection(firestore, 'interactionCodes');
+        await addDoc(codesRef, {
+          code: newCode,
+          userId: user.uid,
+          expiresAt: serverTimestamp(),
+        });
+        
+        setInteractionCode(newCode);
+      } catch (error) {
+        console.error("Error generating interaction code:", error);
+        toast({
+          variant: "destructive",
+          title: "Could not generate code",
+          description: "There was an issue generating a new interaction code. Please try again.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    generateCode();
+    // We can add a cleanup function to delete the code from firestore, but for now we'll let it expire
+  }, [firestore, user, toast]);
+
+  const handleConfirm = async () => {
+    if (!firestore || !user || !peerCode) {
+      toast({ variant: "destructive", title: "Invalid code", description: "Please enter a valid code." });
+      return;
+    }
+
+    setIsConfirming(true);
+    try {
+      const codesRef = collection(firestore, 'interactionCodes');
+      const q = query(codesRef, where("code", "==", peerCode.toUpperCase()));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        toast({ variant: "destructive", title: "Invalid Code", description: "The code you entered is invalid or has expired." });
+        setIsConfirming(false);
+        return;
+      }
+
+      const peerCodeDoc = querySnapshot.docs[0];
+      const peerCodeData = peerCodeDoc.data();
+      
+      if (peerCodeData.userId === user.uid) {
+        toast({ variant: "destructive", title: "Cannot use your own code", description: "Please enter the code from your peer." });
+        setIsConfirming(false);
+        return;
+      }
+
+      // Create interaction for both users
+      const batch = writeBatch(firestore);
+      const timestamp = serverTimestamp();
+      
+      // Interaction for current user
+      const userInteractionRef = collection(firestore, `users/${user.uid}/interactions`);
+      batch.set(userInteractionRef, {
+        participant1Id: user.uid,
+        participant2Id: peerCodeData.userId,
+        timestamp: timestamp,
+      });
+
+      // Interaction for peer
+      const peerInteractionRef = collection(firestore, `users/${peerCodeData.userId}/interactions`);
+      batch.set(peerInteractionRef, {
+        participant1Id: peerCodeData.userId,
+        participant2Id: user.uid,
+        timestamp: timestamp,
+      });
+
+      // Delete the used code
+      batch.delete(peerCodeDoc.ref);
+
+      await batch.commit();
+
+      toast({
+        title: "Interaction Confirmed!",
+        description: "You can now give feedback to your peer.",
+      });
+
+      // Redirect to give feedback page for the peer
+      router.push(`/dashboard/give-feedback?revieweeId=${peerCodeData.userId}`);
+
+    } catch (error) {
+      console.error("Error confirming interaction:", error);
+      toast({
+        variant: "destructive",
+        title: "Confirmation Failed",
+        description: "Could not confirm the interaction. Please check the code and try again.",
+      });
+      setIsConfirming(false);
+    }
+  };
 
   return (
     <div className="mx-auto grid max-w-4xl gap-6">
@@ -50,12 +139,20 @@ export default function ConfirmInteractionPage() {
           <div className="flex flex-col items-center justify-center space-y-4 rounded-lg border-2 border-dashed p-8">
             <h3 className="text-lg font-semibold">Your Interaction Code</h3>
             <p className="text-sm text-muted-foreground">Share this code with your peer.</p>
-            <div className="flex items-center space-x-2 rounded-md bg-muted px-4 py-2">
-              <span className="text-2xl font-bold tracking-widest text-primary">{interactionCode}</span>
+            <div className="flex h-10 items-center space-x-2 rounded-md bg-muted px-4 py-2">
+              {isLoading || !interactionCode ? (
+                <Skeleton className="h-6 w-28" />
+              ) : (
+                <span className="text-2xl font-bold tracking-widest text-primary">{interactionCode}</span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">Or let them scan your QR code.</p>
-            <div className="rounded-lg bg-white p-2 shadow-md">
-              <QrCodePlaceholder />
+            <div className="rounded-lg bg-white p-2 shadow-md h-28 w-28 flex items-center justify-center">
+              {isLoading || !interactionCode ? (
+                <Skeleton className="h-full w-full" />
+              ) : (
+                <QRCode value={interactionCode} size={96} />
+              )}
             </div>
           </div>
           <div className="flex flex-col space-y-4 pt-8">
@@ -64,8 +161,16 @@ export default function ConfirmInteractionPage() {
               Input the code provided by your peer to confirm your interaction and leave feedback.
             </p>
             <div className="flex w-full items-center space-x-2">
-              <Input placeholder="XXX-XXX-XXX" className="text-center text-lg tracking-widest" />
-              <Button>Confirm</Button>
+              <Input
+                placeholder="XXX-XXX"
+                className="text-center text-lg tracking-widest"
+                value={peerCode}
+                onChange={(e) => setPeerCode(e.target.value)}
+                disabled={isConfirming}
+              />
+              <Button onClick={handleConfirm} disabled={isConfirming || !peerCode}>
+                {isConfirming ? 'Confirming...' : 'Confirm'}
+              </Button>
             </div>
           </div>
         </CardContent>
