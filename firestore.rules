@@ -64,14 +64,13 @@ service cloud.firestore {
     /**
      * @description Manages user profile documents.
      * @path /users/{userId}
-     * @allow (get) Any authenticated user can view any user's profile.
-     * @allow (create) An authenticated user can create their own profile document. `auth.uid: 'user_abc'`, `path: /users/user_abc`
-     * @deny (list) Listing all users is disabled to prevent user enumeration.
-     * @deny (create) A user cannot create a profile for another user. `auth.uid: 'user_abc'`, `path: /users/user_xyz`
-     * @principle Enforces self-creation and document ownership for writes, while allowing reads for discoverability.
+     * @allow (get, list) Any authenticated user can view any user's profile to enable discoverability.
+     * @allow (create) An authenticated user can create their own profile document.
+     * @allow (update, delete) The owner of the profile can modify or delete it.
+     * @deny A user cannot create a profile for another user.
      */
     match /users/{userId} {
-      allow get, list: if isSignedIn(); // allow listing users for feedback requests
+      allow get, list: if isSignedIn();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
@@ -79,30 +78,27 @@ service cloud.firestore {
       /**
        * @description Manages a user's logged interactions with peers.
        * @path /users/{userId}/interactions/{interactionId}
-       * @allow (create) The owner of the path can create an interaction document for themselves.
-       * @deny (get) A user cannot read another user's private interaction history.
-       * @principle Restricts access to a user's own data tree.
+       * @allow (read) A user can only read their own interaction history.
+       * @allow (create) A user can create an interaction document in their own or a peer's history,
+       *                but only if they are one of the participants.
        */
       match /interactions/{interactionId} {
         allow get, list: if isOwner(userId);
-        allow create: if isSignedIn() && (request.resource.data.participant1Id == request.auth.uid || request.resource.data.participant2Id == request.auth.uid);
-        allow update: if isExistingOwner(userId) && request.resource.data.participant1Id == resource.data.participant1Id && request.resource.data.participant2Id == resource.data.participant2Id;
+        allow create: if isSignedIn() && (request.auth.uid == request.resource.data.participant1Id || request.auth.uid == request.resource.data.participant2Id);
+        allow update: if isExistingOwner(userId);
         allow delete: if isExistingOwner(userId);
       }
 
       /**
        * @description Manages feedback documents *received* by a user. The {userId} in the path is the reviewee.
        * @path /users/{userId}/feedback/{feedbackId}
-       * @allow (create) An authenticated user can create feedback for another user. `auth.uid: 'reviewer_123'`, `path: /users/reviewee_456/feedback/abc`, `data: { reviewerId: 'reviewer_123', revieweeId: 'reviewee_456' }`
-       * @allow (get) A user can read the feedback they have received. `auth.uid: 'reviewee_456'`, `path: /users/reviewee_456/feedback/abc`
-       * @deny (get) A user cannot read feedback another user has received. `auth.uid: 'user_789'`, `path: /users/reviewee_456/feedback/abc`
-       * @deny (update) The original reviewer cannot modify feedback after submitting it.
-       * @principle Secures a cross-user write by validating sender identity, while giving the recipient full control over the received document.
+       * @allow (read) A user can read the feedback they have received.
+       * @allow (create) An authenticated user can create feedback for another user, if the data is valid.
        */
       match /feedback/{feedbackId} {
         allow get, list: if isOwner(userId);
         allow create: if isSignedIn() && request.resource.data.revieweeId == userId && request.resource.data.reviewerId == request.auth.uid;
-        allow update: if isExistingOwner(userId) && request.resource.data.reviewerId == resource.data.reviewerId && request.resource.data.revieweeId == resource.data.revieweeId;
+        allow update: if isExistingOwner(userId);
         allow delete: if isExistingOwner(userId);
       }
     }
@@ -110,10 +106,8 @@ service cloud.firestore {
     /**
      * @description Manages feedback requests.
      * @path /feedbackRequests/{feedbackRequestId}
-     * @allow (read) The requester or the requestee can read a feedback request.
-     * @allow (create) A user can create a feedback request.
-     * @allow (update) The requester or requestee can update the status.
-     * @deny (delete) Deleting requests is disallowed to maintain history.
+     * @allow (read, update) The requester or the requestee can access a feedback request.
+     * @allow (create) An authenticated user can create a feedback request for themselves.
      */
     match /feedbackRequests/{feedbackRequestId} {
       allow read, update: if isSignedIn() && (isOwner(resource.data.requesterId) || isOwner(resource.data.requesteeId));
@@ -125,10 +119,9 @@ service cloud.firestore {
     /**
      * @description Manages temporary interaction codes.
      * @path /interactionCodes/{codeId}
-     * @allow (create) Any authenticated user can create a code for themselves.
      * @allow (read) Any authenticated user can read a code to confirm an interaction.
-     * @deny (update) Codes cannot be updated.
-     * @allow (delete) A user can delete their own code (or it can be deleted by the system).
+     * @allow (create) A user can create a code for themselves.
+     * @allow (delete) A user can delete their own code.
      */
     match /interactionCodes/{codeId} {
       allow read: if isSignedIn();
