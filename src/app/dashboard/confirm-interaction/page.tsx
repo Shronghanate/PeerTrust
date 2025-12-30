@@ -85,19 +85,21 @@ export default function ConfirmInteractionPage() {
       // Create interaction for both users
       const batch = writeBatch(firestore);
       
-      // Interaction for current user - create a new doc ref
+      // Interaction for current user
       const userInteractionsCol = collection(firestore, `users/${user.uid}/interactions`);
-      const userInteractionRef = doc(userInteractionsCol);
+      const userInteractionRef = doc(userInteractionsCol); // generate a new unique ID
       batch.set(userInteractionRef, {
+        id: userInteractionRef.id,
         participant1Id: user.uid,
         participant2Id: peerCodeData.userId,
         timestamp: serverTimestamp(),
       });
 
-      // Interaction for peer - create a new doc ref
+      // Interaction for peer
       const peerInteractionsCol = collection(firestore, `users/${peerCodeData.userId}/interactions`);
-      const peerInteractionRef = doc(peerInteractionsCol);
+      const peerInteractionRef = doc(peerInteractionsCol); // generate a new unique ID
       batch.set(peerInteractionRef, {
+        id: peerInteractionRef.id,
         participant1Id: peerCodeData.userId,
         participant2Id: user.uid,
         timestamp: serverTimestamp(),
