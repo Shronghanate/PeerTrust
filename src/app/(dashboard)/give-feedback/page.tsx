@@ -21,6 +21,7 @@ function GiveFeedbackSkeleton() {
   );
 }
 
+
 export default function GiveFeedbackPage() {
   return (
     <div className="mx-auto max-w-2xl">
