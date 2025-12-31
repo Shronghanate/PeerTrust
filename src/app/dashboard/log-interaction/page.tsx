@@ -42,7 +42,7 @@ export default function LogInteractionPage() {
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, "users"), where("id", "!=", user.uid));
+    return query(collection(firestore, "users"));
   }, [firestore, user]);
 
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,7 +37,7 @@ export function RequestFeedbackForm() {
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, "users"), where("id", "!=", user.uid));
+    return query(collection(firestore, "users"));
   }, [firestore, user]);
 
   const { data: users, isLoading } = useCollection<UserProfile>(usersQuery);
