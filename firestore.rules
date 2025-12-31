@@ -136,9 +136,7 @@ service cloud.firestore {
     /**
      * @description Manages temporary interaction codes. This collection is no longer used but the rule is kept for safety.
      * @path /interactionCodes/{codeId}
-     * @allow (read) Any authenticated user can read a code to confirm an interaction.
-     * @allow (create) A user can create a code for themselves.
-     * @allow (delete) A user can delete their own code.
+     * @allow (read, create, delete, update) if false;
      */
     match /interactionCodes/{codeId} {
       allow read, create, delete, update: if false;
